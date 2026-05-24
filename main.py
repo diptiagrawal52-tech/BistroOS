@@ -192,7 +192,7 @@ def generate_smart_mock(data: ShiftDataInput) -> ShiftAnalysisOutput:
 
     return ShiftAnalysisOutput(
         operational_score=score,
-        summary=f"Virtual Director Analysis (DEMO MODE): The {data.shift_type} shift on {data.date} generated ${data.sales.revenue:,.2f} in revenue from {data.covers} covers, averaging ${data.sales.avg_spend_per_head:.2f} spend per head. Operational flow scored {score}/100, driven by {kitchen_status.lower()} kitchen prep readiness.",
+        summary=f"Virtual Director Analysis (DEMO MODE): The {data.shift_type} shift on {data.date} generated ${data.sales.revenue:,.2f} in revenue from {data.sales.covers} covers, averaging ${data.sales.avg_spend_per_head:.2f} spend per head. Operational flow scored {score}/100, driven by {kitchen_status.lower()} kitchen prep readiness.",
         kpis=KPISummary(
             logistics_health=logistics_status,
             labor_efficiency=labor_status,
@@ -220,7 +220,7 @@ async def analyze_shift(payload: ShiftDataInput):
     try:
         # Initialize Google Generative AI
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         # Build prompt
         system_instruction = (
@@ -267,8 +267,7 @@ async def analyze_shift(payload: ShiftDataInput):
             generation_config={
                 "response_mime_type": "application/json",
                 "temperature": 0.2
-            },
-            contents=prompt
+            }
         )
         
         response_text = response.text.strip()
