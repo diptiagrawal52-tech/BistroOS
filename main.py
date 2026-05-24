@@ -220,7 +220,7 @@ async def analyze_shift(payload: ShiftDataInput):
     try:
         # Initialize Google Generative AI
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-3.5-flash")
         
         # Build prompt
         system_instruction = (
