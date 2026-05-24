@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BistroOS: The Integrated Restaurant Operations Hub</title>
+  <meta name="description" content="AI-powered restaurant operations control center for independent manager shift diagnostics.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#10b981', // Emerald
+              600: '#059669',
+              900: '#064e3b',
+            },
+            accent: {
+              500: '#6366f1', // Indigo
+              600: '#4f46e5',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-outfit {
+      font-family: 'Outfit', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    /* Animated gauge */
+    .gauge-circle {
+      transition: stroke-dashoffset 0.8s ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans bg-radial from-slate-900 to-slate-950">
+
+  <!-- TOP BAR -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-500 to-accent-500 flex items-center justify-center shadow-lg shadow-brand-500/20">
+        <!-- BistroOS Logo (Frying pan / cutlery grid) -->
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-white">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold font-outfit tracking-wide bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">BistroOS</h1>
+        <p class="text-xs text-slate-400 font-medium">Integrated Operations Control Hub</p>
+      </div>
+    </div>
+    
+    <!-- DEMO CONTROLS -->
+    <div class="flex items-center space-x-3">
+      <span class="text-xs text-slate-400 hidden sm:inline">Simulation Presets:</span>
+      <button onclick="loadDemoShift('high_perf')" class="text-xs bg-brand-900/40 border border-brand-500/30 hover:border-brand-500 text-brand-100 hover:text-white px-3 py-2 rounded-lg transition-all flex items-center space-x-1">
+        <span class="h-1.5 w-1.5 rounded-full bg-brand-500 animate-ping"></span>
+        <span>Ideal Shift</span>
+      </button>
+      <button onclick="loadDemoShift('bottlenecks')" class="text-xs bg-rose-950/40 border border-rose-500/30 hover:border-rose-500 text-rose-100 hover:text-white px-3 py-2 rounded-lg transition-all flex items-center space-x-1">
+        <span class="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping"></span>
+        <span>Bottleneck Shift</span>
+      </button>
+      <button id="health-indicator" onclick="checkAPIStatus()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg transition duration-200">
+        API: Checking...
+      </button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex flex-col lg:flex-row h-full">
+    <!-- NAVIGATION / TAB SELECTOR (Sidebar on desktop, Topbar on Mobile) -->
+    <nav class="lg:w-64 w-full bg-slate-900/40 border-r lg:border-b-0 border-b border-slate-800 p-4 space-y-1 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible shrink-0 gap-2 lg:gap-1">
+      <button onclick="switchTab('overview')" id="btn-tab-overview" class="tab-btn w-full px-4 py-3 rounded-xl flex items-center space-x-3 text-sm font-semibold transition-all duration-200 justify-center lg:justify-start bg-slate-800 text-white font-outfit shadow-inner border border-slate-700/50">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+        </svg>
+        <span>Overview & AI</span>
+      </button>
+
+      <button onclick="switchTab('logistics')" id="btn-tab-logistics" class="tab-btn w-full px-4 py-3 rounded-xl flex items-center space-x-3 text-sm font-medium transition-all duration-200 justify-center lg:justify-start text-slate-400 hover:bg-slate-800/40 hover:text-slate-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124l-.228-3.602a5.621 5.621 0 0 0-5.467-5.274h-1.2c-.36 0-.699.143-.95.399l-1.725 1.725a.75.75 0 0 0-.256.556v8.46" />
+        </svg>
+        <span>1. Logistics</span>
+      </button>
+
+      <button onclick="switchTab('labor')" id="btn-tab-labor" class="tab-btn w-full px-4 py-3 rounded-xl flex items-center space-x-3 text-sm font-medium transition-all duration-200 justify-center lg:justify-start text-slate-400 hover:bg-slate-800/40 hover:text-slate-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+        </svg>
+        <span>2. Labor</span>
+      </button>
+
+      <button onclick="switchTab('service')" id="btn-tab-service" class="tab-btn w-full px-4 py-3 rounded-xl flex items-center space-x-3 text-sm font-medium transition-all duration-200 justify-center lg:justify-start text-slate-400 hover:bg-slate-800/40 hover:text-slate-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Z" />
+        </svg>
+        <span>3. Service</span>
+      </button>
+
+      <button onclick="switchTab('prep')" id="btn-tab-prep" class="tab-btn w-full px-4 py-3 rounded-xl flex items-center space-x-3 text-sm font-medium transition-all duration-200 justify-center lg:justify-start text-slate-400 hover:bg-slate-800/40 hover:text-slate-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+        </svg>
+        <span>4. Prep & Cook</span>
+      </button>
+
+      <button onclick="switchTab('sales')" id="btn-tab-sales" class="tab-btn w-full px-4 py-3 rounded-xl flex items-center space-x-3 text-sm font-medium transition-all duration-200 justify-center lg:justify-start text-slate-400 hover:bg-slate-800/40 hover:text-slate-200">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5M3 18.75h18" />
+        </svg>
+        <span>5. Sales</span>
+      </button>
+    </nav>
+
+    <!-- CONTENT WRAPPER -->
+    <main class="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl">
+      
+      <!-- SUBMIT BANNER -->
+      <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-300">Shift Configuration</h2>
+          <div class="flex flex-wrap gap-3 mt-1.5">
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Shift Date</label>
+              <input type="date" id="input-shift-date" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500 font-outfit" value="2026-05-24">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Shift Window</label>
+              <select id="input-shift-type" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500 font-outfit">
+                <option value="Lunch">Lunch Service</option>
+                <option value="Dinner" selected>Dinner Service</option>
+                <option value="All-Day">All-Day Operations</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button onclick="submitShift()" class="bg-gradient-to-r from-brand-500 to-emerald-600 hover:from-brand-600 hover:to-emerald-700 text-white font-semibold font-outfit text-sm px-6 py-3 rounded-xl transition duration-200 shadow-lg shadow-brand-500/20 flex items-center justify-center space-x-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 21l8.982-11.795H13.62l.812-5.109L5.45 15.904h4.363Z" />
+          </svg>
+          <span>Generate Shift Summary</span>
+        </button>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- TAB: OVERVIEW & AI -->
+      <!-- ============================================== -->
+      <section id="tab-content-overview" class="tab-pane space-y-6">
+        
+        <!-- VIRTUAL DIRECTOR AI PANEL -->
+        <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+          <!-- Ambient light glow -->
+          <div class="absolute -right-40 -top-40 w-96 h-96 bg-brand-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+          
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
+            <div class="flex items-center space-x-3">
+              <div class="h-9 w-9 rounded-lg bg-emerald-950 border border-brand-500/30 flex items-center justify-center text-brand-500">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                  <path d="M16.5 6a3 3 0 0 0-6 0v8.03a8.89 8.89 0 0 0 1.2-1.278l3.11-3.467A3 3 0 0 0 16.5 6ZM18 15.75a5.25 5.25 0 1 1-10.5 0v-9a7.5 7.5 0 1 0 15 0v9Z" />
+                  <path d="M12 20.25a.75.75 0 0 1 .75-.75h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1-.75-.75Z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-base font-outfit text-slate-100 flex items-center gap-2">
+                  Virtual Operations Director Assessment
+                  <span id="demo-badge" class="hidden text-[10px] bg-amber-900/50 border border-amber-500/30 text-amber-300 font-semibold px-2 py-0.5 rounded-full font-sans uppercase">Demo Mode</span>
+                </h3>
+                <p class="text-xs text-slate-400">Shift diagnostics parsed by gemini-2.5-flash</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading View -->
+          <div id="ai-loading" class="hidden py-16 flex flex-col items-center justify-center space-y-4">
+            <div class="relative w-16 h-16 flex items-center justify-center">
+              <div class="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+              <div class="absolute inset-0 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p class="text-xs text-slate-400 font-medium font-outfit tracking-wide animate-pulse">DIRECTOR ASSESSING SHIFT DATA...</p>
+          </div>
+
+          <!-- Placeholder View -->
+          <div id="ai-placeholder" class="py-16 flex flex-col items-center justify-center text-center px-4 space-y-3">
+            <div class="h-12 w-12 rounded-xl bg-slate-800/40 flex items-center justify-center text-slate-500">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+              </svg>
+            </div>
+            <h4 class="font-semibold text-sm text-slate-300 font-outfit">No Shift Summary Generated</h4>
+            <p class="text-xs text-slate-500 max-w-sm">Complete the shift logs in modules 1 to 5 and click "Generate Shift Summary" to run AI audits on operational efficiency.</p>
+          </div>
+
+          <!-- Report Content -->
+          <div id="ai-report" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Score & Base summary -->
+            <div class="lg:col-span-4 flex flex-col items-center justify-center text-center p-6 bg-slate-950/40 rounded-2xl border border-slate-800/50">
+              <div class="relative w-40 h-40 flex items-center justify-center">
+                <svg class="w-full h-full transform -rotate-90">
+                  <circle cx="80" cy="80" r="70" stroke-width="10" stroke="#1e293b" fill="transparent"/>
+                  <circle id="score-gauge" class="gauge-circle" cx="80" cy="80" r="70" stroke-width="10" stroke="#10b981" fill="transparent" stroke-dasharray="439.8" stroke-dashoffset="439.8"/>
+                </svg>
+                <div class="absolute flex flex-col items-center">
+                  <span id="score-val" class="text-4xl font-extrabold font-outfit text-white">0</span>
+                  <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">OPERATIONS SCORE</span>
+                </div>
+              </div>
+              <p id="report-summary" class="text-xs text-slate-300 mt-4 leading-relaxed italic">Analyzing data...</p>
+            </div>
+
+            <!-- KPI Badges & Lists -->
+            <div class="lg:col-span-8 space-y-6">
+              <!-- Grid KPIs -->
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 font-outfit">KPI Breakdowns</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Logistics</span>
+                      <p id="kpi-logistics" class="text-xs font-bold text-white mt-0.5">Calculating...</p>
+                    </div>
+                  </div>
+                  <div class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Labor</span>
+                      <p id="kpi-labor" class="text-xs font-bold text-white mt-0.5">Calculating...</p>
+                    </div>
+                  </div>
+                  <div class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Service Experience</span>
+                      <p id="kpi-service" class="text-xs font-bold text-white mt-0.5">Calculating...</p>
+                    </div>
+                  </div>
+                  <div class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Kitchen Cook</span>
+                      <p id="kpi-kitchen" class="text-xs font-bold text-white mt-0.5">Calculating...</p>
+                    </div>
+                  </div>
+                  <div class="bg-slate-950/40 border border-slate-800/50 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Finance</span>
+                      <p id="kpi-sales" class="text-xs font-bold text-white mt-0.5">Calculating...</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Alerts / Red Flags -->
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 font-outfit">Critical Red Flags</h4>
+                <ul id="report-red-flags" class="space-y-2">
+                  <!-- JS Injection -->
+                </ul>
+              </div>
+
+              <!-- Actions -->
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 font-outfit">Actionable Recommendations</h4>
+                <ul id="report-recommendations" class="space-y-2">
+                  <!-- JS Injection -->
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATS OVERVIEW CARDS (Calculated client-side) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+            <div>
+              <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Labor staff ratio</span>
+              <h4 id="calc-labor-ratio" class="text-2xl font-bold font-outfit text-white mt-1">1.00</h4>
+              <p class="text-xs text-slate-500 mt-1">Floor-to-Kitchen staff count</p>
+            </div>
+            <span id="badge-labor-ratio" class="text-xs bg-slate-800 border border-slate-700 text-slate-300 font-semibold px-2.5 py-1 rounded-full font-outfit">Normal</span>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+            <div>
+              <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Estimated spend per guest</span>
+              <h4 id="calc-spend-head" class="text-2xl font-bold font-outfit text-white mt-1">$0.00</h4>
+              <p class="text-xs text-slate-500 mt-1">Calculated from covers/sales</p>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-brand-500">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5M3 18.75h18" />
+            </svg>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between">
+            <div>
+              <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">High Margin Profit Velocity</span>
+              <h4 id="calc-margin-profit" class="text-2xl font-bold font-outfit text-white mt-1">$0.00</h4>
+              <p class="text-xs text-slate-500 mt-1">Calculated margin sales</p>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-accent-500">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.752-.698a.75.75 0 0 1 1.006.007l1.105 1.106a.75.75 0 0 0 1.105-.008l3.12-3.12A3 3 0 1 0 9.09 9.09M12.25 21a9.75 9.75 0 1 1-9.75-9.75M12.25 21a9.746 9.746 0 0 0 9.75-9.75M12.25 21V3m0 18h3.75M12.25 3h3.75m-3.75 0H8.25m3.75 0v3.375" />
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB: 1. LOGISTICS -->
+      <!-- ============================================== -->
+      <section id="tab-content-logistics" class="tab-pane hidden space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="font-bold text-lg font-outfit text-white flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              1. Inwarding Logistics Log
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">Verify supplier delivery standards</span>
+          </div>
+
+          <!-- Basic logistics summary -->
+          <div class="max-w-xs">
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Total Deliveries Received</label>
+            <input type="number" id="input-deliveries-received" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-outfit" value="0">
+          </div>
+
+          <!-- Dynamic List: Shorted Items -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 font-outfit">Shorted / Missing Ingredients</h4>
+              <button onclick="addLogisticsShortRow()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition duration-150">
+                + Add Shorted Item
+              </button>
+            </div>
+            <div class="overflow-x-auto border border-slate-800 rounded-xl">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th class="p-3">Ingredient Name</th>
+                    <th class="p-3">Supplier</th>
+                    <th class="p-3">Qty Ordered</th>
+                    <th class="p-3">Qty Received</th>
+                    <th class="p-3">Impact Severity</th>
+                    <th class="p-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="table-logistics-shorts">
+                  <!-- Row injection -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Dynamic List: Quality Discrepancies -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 font-outfit">Ingredient Quality Exceptions</h4>
+              <button onclick="addLogisticsQualityRow()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition duration-150">
+                + Add Quality Issue
+              </button>
+            </div>
+            <div class="overflow-x-auto border border-slate-800 rounded-xl">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th class="p-3">Ingredient Name</th>
+                    <th class="p-3">Quality Issue Details</th>
+                    <th class="p-3">Supplier</th>
+                    <th class="p-3">Action Taken</th>
+                    <th class="p-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="table-logistics-quality">
+                  <!-- Row injection -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB: 2. LABOR & STAFFING -->
+      <!-- ============================================== -->
+      <section id="tab-content-labor" class="tab-pane hidden space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="font-bold text-lg font-outfit text-white flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              2. Labour & Staffing Log
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">Coordinate floor-to-kitchen staffing models</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Staff Counters -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Active Floor Staff (Front of House)</label>
+                <div class="flex items-center space-x-2">
+                  <button onclick="adjustStaff('floor', -1)" class="w-10 h-10 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 flex items-center justify-center font-bold text-lg">-</button>
+                  <input type="number" id="input-floor-staff" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-outfit text-center" value="0">
+                  <button onclick="adjustStaff('floor', 1)" class="w-10 h-10 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 flex items-center justify-center font-bold text-lg">+</button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Active Kitchen Staff (Back of House)</label>
+                <div class="flex items-center space-x-2">
+                  <button onclick="adjustStaff('kitchen', -1)" class="w-10 h-10 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 flex items-center justify-center font-bold text-lg">-</button>
+                  <input type="number" id="input-kitchen-staff" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-outfit text-center" value="0">
+                  <button onclick="adjustStaff('kitchen', 1)" class="w-10 h-10 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 flex items-center justify-center font-bold text-lg">+</button>
+                </div>
+              </div>
+
+              <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/80">
+                <span class="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Automatic Ratio Diagnostic</span>
+                <div class="flex items-center space-x-3 mt-1.5">
+                  <span id="labor-ratio-number" class="text-3xl font-extrabold font-outfit text-white">0.00</span>
+                  <span id="labor-ratio-alert-badge" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2.5 py-0.5 rounded-full font-semibold font-outfit">Normal</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">Balanced target floor-to-kitchen staffing ratio is between 1.0 and 1.8.</p>
+              </div>
+            </div>
+
+            <!-- Bottlenecks Tags Builder -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Operational & Staff Bottlenecks</label>
+                <div class="flex space-x-2">
+                  <input type="text" id="input-bottleneck-text" placeholder="e.g. FOH overwhelmed at peak, dishwashing shortage..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500">
+                  <button onclick="addLaborBottleneck()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-lg text-xs font-semibold">Add</button>
+                </div>
+              </div>
+
+              <div>
+                <span class="block text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Shift Bottlenecks Logged</span>
+                <div id="labor-bottlenecks-list" class="flex flex-wrap gap-2 min-h-24 p-3 bg-slate-950/40 rounded-xl border border-slate-800/60">
+                  <!-- Tag elements inserted dynamically -->
+                  <span class="text-xs text-slate-600 italic select-none self-center mx-auto">No bottlenecks logged. Shift running smooth.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB: 3. CUSTOMER SERVICE -->
+      <!-- ============================================== -->
+      <section id="tab-content-service" class="tab-pane hidden space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="font-bold text-lg font-outfit text-white flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              3. Guest Service Standard Log
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">Verify table flows & service quality metrics</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Table turn and slider satisfaction -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Average Table Turn Time (minutes)</label>
+                <div class="flex items-center space-x-3">
+                  <input type="range" id="input-turn-range" min="30" max="180" value="75" oninput="document.getElementById('input-turn-number').value=this.value" class="flex-1 accent-brand-500 bg-slate-950 rounded-lg">
+                  <input type="number" id="input-turn-number" min="30" max="180" value="75" oninput="document.getElementById('input-turn-range').value=this.value" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center font-outfit">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Guest Satisfaction Score</label>
+                <div class="flex items-center space-x-3">
+                  <input type="range" id="input-satisfaction-range" min="1" max="5" step="0.1" value="4.5" oninput="updateSatisfactionDisplay(this.value)" class="flex-1 accent-brand-500 bg-slate-950 rounded-lg">
+                  <span id="input-satisfaction-val" class="text-2xl font-bold font-outfit text-white w-12 text-center">4.5</span>
+                  <span id="satisfaction-emoji" class="text-lg">😀</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Service Flag details -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 font-outfit">Service Standard Failures</h4>
+                <button onclick="addServiceFlagRow()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition duration-150">
+                  + Log Flagged Table
+                </button>
+              </div>
+              
+              <div class="overflow-x-auto border border-slate-800 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-300">
+                  <thead class="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th class="p-3 w-20">Table #</th>
+                      <th class="p-3">Incident / Delay Description</th>
+                      <th class="p-3">Manager Recovery Action</th>
+                      <th class="p-3 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-service-flags">
+                    <!-- Dynamic row injection -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB: 4. KITCHEN PREP & COOK TIMELINES -->
+      <!-- ============================================== -->
+      <section id="tab-content-prep" class="tab-pane hidden space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="font-bold text-lg font-outfit text-white flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              4. Prep Station & Cook Timelines
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">Verify culinary prep timelines & line speed models</span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Prep Metrics -->
+            <div class="bg-slate-950/40 p-4 rounded-xl border border-slate-800 space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Shift Prep Checklist Completion (%)</label>
+                <div class="flex items-center space-x-3">
+                  <input type="range" id="input-prep-range" min="0" max="100" value="100" oninput="document.getElementById('input-prep-number').value=this.value" class="flex-1 accent-brand-500 bg-slate-950 rounded-lg">
+                  <div class="flex items-center space-x-1">
+                    <input type="number" id="input-prep-number" min="0" max="100" value="100" oninput="document.getElementById('input-prep-range').value=this.value" class="w-12 bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1 text-xs text-center font-outfit">
+                    <span class="text-xs text-slate-400">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Uncompleted Prep List Tags -->
+              <div class="space-y-3">
+                <label class="block text-xs font-semibold text-slate-400">Missing Prep Items (Gaps)</label>
+                <div class="flex space-x-2">
+                  <input type="text" id="input-prep-gap" placeholder="e.g. Sliced onions, pizza dough..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-brand-500">
+                  <button onclick="addPrepGap()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1 rounded-lg text-xs font-semibold">Add</button>
+                </div>
+                <div id="prep-gaps-list" class="flex flex-wrap gap-2 min-h-16 p-2 bg-slate-950/60 rounded-lg border border-slate-800/80">
+                  <span class="text-[11px] text-slate-600 italic select-none self-center mx-auto">No prep gaps reported.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cook Timelines input -->
+            <div class="lg:col-span-2 space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 font-outfit">Cooking & Prep Timelines Tracker</h4>
+                  <p class="text-[10px] text-slate-500">Configure cooking times to sequence incoming tickets optimally</p>
+                </div>
+                <button onclick="addCookTimelineRow()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition duration-150">
+                  + Add Menu Item
+                </button>
+              </div>
+
+              <div class="overflow-x-auto border border-slate-800 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-300">
+                  <thead class="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th class="p-3">Menu Item Name</th>
+                      <th class="p-3 w-32">Prep Time (mins)</th>
+                      <th class="p-3 w-32">Active Cook Time (mins)</th>
+                      <th class="p-3 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-cook-timelines">
+                    <!-- Dynamic row injection -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Optimization Engine Box -->
+              <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 mt-2">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Line Ticket Sequencing Optimizer</span>
+                  <button onclick="optimizeTimelineSequence()" class="text-[10px] bg-indigo-950/40 border border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-900/40 text-indigo-300 px-2.5 py-1 rounded font-semibold font-outfit">
+                    Calculate Sequence
+                  </button>
+                </div>
+                <div id="timeline-optimized-list" class="space-y-1.5 text-xs text-slate-400">
+                  <p class="italic text-slate-600 text-center py-2">Click "Calculate Sequence" to organize kitchen ticket timings based on prep/cook bounds.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- TAB: 5. SALES INTEGRATION -->
+      <!-- ============================================== -->
+      <section id="tab-content-sales" class="tab-pane hidden space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 class="font-bold text-lg font-outfit text-white flex items-center gap-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              5. Sales & Margin Integration
+            </h3>
+            <span class="text-xs text-slate-500 font-medium">Verify shift financial parameters & margins</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Inputs -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Gross Shift Revenue ($)</label>
+                <input type="number" id="input-sales-revenue" oninput="calculateSalesMetrics()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-outfit text-white font-semibold" value="0" step="0.01">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Total Shift Covers (Guests)</label>
+                <input type="number" id="input-sales-covers" oninput="calculateSalesMetrics()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 font-outfit text-white font-semibold" value="0">
+              </div>
+
+              <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                <span class="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Calculated Average Spend</span>
+                <span id="sales-pph-display" class="text-3xl font-extrabold font-outfit text-brand-500 block mt-1">$0.00</span>
+                <span class="text-[10px] text-slate-500">Gross Spend per Guest Head</span>
+              </div>
+            </div>
+
+            <!-- High Margin Products Sales Tracker -->
+            <div class="md:col-span-2 space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 font-outfit">High-Margin Items Sold</h4>
+                  <p class="text-[10px] text-slate-500">Track movement of high-profit products</p>
+                </div>
+                <button onclick="addHighMarginRow()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition duration-150">
+                  + Add High-Margin Item
+                </button>
+              </div>
+
+              <div class="overflow-x-auto border border-slate-800 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-300">
+                  <thead class="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th class="p-3">Product Name</th>
+                      <th class="p-3 w-28">Quantity Sold</th>
+                      <th class="p-3 w-32">Unit Net Margin ($)</th>
+                      <th class="p-3 text-right">Total Est Profit</th>
+                      <th class="p-3 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-sales-margin">
+                    <!-- Dynamic row injection -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-900 bg-slate-950 px-6 py-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 shrink-0">
+    <p>BistroOS Operational Core v1.0.0 &copy; 2026</p>
+    <div class="flex space-x-4">
+      <a href="#" class="hover:text-slate-400">System Logs</a>
+      <a href="#" class="hover:text-slate-400">Privacy Specs</a>
+      <a href="#" class="hover:text-slate-400">Architect Guide</a>
+    </div>
+  </footer>
+
+  <!-- ============================================== -->
+  <!-- JAVASCRIPT STATE & ENGINE -->
+  <!-- ============================================== -->
+  <script>
+    // Server API host
+    const API_HOST = window.location.origin;
+
+    // Shift data client state arrays
+    let shortedItemsList = [];
+    let qualityIssuesList = [];
+    let laborBottlenecksList = [];
+    let serviceFlagsList = [];
+    let cookingTimelinesList = [];
+    let highMarginItemsList = [];
+
+    // Initialize lists on DOM Ready
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAPIStatus();
+      // Load standard table rows
+      renderAllTables();
+      calculateSalesMetrics();
+      calculateLaborRatio();
+    });
+
+    // API connection state check
+    async function checkAPIStatus() {
+      const el = document.getElementById('health-indicator');
+      try {
+        const res = await fetch(`${API_HOST}/api/health`);
+        if (res.ok) {
+          const data = await res.json();
+          el.innerText = `API: ${data.gemini_api_key_configured ? 'Live AI' : 'Simulation Mode'}`;
+          el.className = `text-xs border px-3 py-2 rounded-lg transition duration-200 ${data.gemini_api_key_configured ? 'bg-emerald-950 text-brand-500 border-brand-500/30' : 'bg-amber-950 text-amber-500 border-amber-500/30'}`;
+        } else {
+          el.innerText = 'API: Disconnected';
+          el.className = 'text-xs bg-rose-950 text-rose-500 border border-rose-500/30 px-3 py-2 rounded-lg transition duration-200';
+        }
+      } catch (err) {
+        el.innerText = 'API: Local Offline';
+        el.className = 'text-xs bg-slate-800 text-slate-400 border border-slate-700 px-3 py-2 rounded-lg transition duration-200';
+      }
+    }
+
+    // Tab Switching System
+    function switchTab(tabId) {
+      // Hide all pane content
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      // Show targeted content
+      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+      
+      // Update nav styling
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white', 'shadow-inner', 'border', 'border-slate-700/50');
+        btn.classList.add('text-slate-400', 'hover:bg-slate-800/40', 'hover:text-slate-200');
+      });
+      const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+      activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-inner', 'border', 'border-slate-700/50');
+      activeBtn.classList.remove('text-slate-400', 'hover:bg-slate-800/40', 'hover:text-slate-200');
+    }
+
+    // Staff Counter Controls
+    function adjustStaff(type, val) {
+      const input = document.getElementById(`input-${type}-staff`);
+      let num = parseInt(input.value) || 0;
+      num += val;
+      if (num < 0) num = 0;
+      input.value = num;
+      calculateLaborRatio();
+    }
+
+    // Calculate FOH/BOH Staff ratio
+    function calculateLaborRatio() {
+      const floorVal = parseInt(document.getElementById('input-floor-staff').value) || 0;
+      const kitchenVal = parseInt(document.getElementById('input-kitchen-staff').value) || 0;
+      
+      let ratio = 0.00;
+      if (kitchenVal > 0) {
+        ratio = floorVal / kitchenVal;
+      }
+      
+      const ratioNumEl = document.getElementById('labor-ratio-number');
+      const ratioBadgeEl = document.getElementById('labor-ratio-alert-badge');
+      const ratioCalcEl = document.getElementById('calc-labor-ratio');
+      const ratioCalcBadgeEl = document.getElementById('badge-labor-ratio');
+
+      ratioNumEl.innerText = ratio.toFixed(2);
+      ratioCalcEl.innerText = ratio.toFixed(2);
+
+      let text = "Imbalanced";
+      let style = "bg-rose-950/60 border border-rose-500/30 text-rose-300";
+      
+      if (ratio === 0) {
+        text = "No Staff";
+        style = "bg-slate-800 border border-slate-700 text-slate-300";
+      } else if (ratio >= 1.0 && ratio <= 1.8) {
+        text = "Optimal";
+        style = "bg-brand-950/60 border border-brand-500/30 text-brand-300";
+      } else if (ratio > 1.8) {
+        text = "Floor Heavy";
+        style = "bg-amber-950/60 border border-amber-500/30 text-amber-300";
+      } else if (ratio < 1.0) {
+        text = "Kitchen Heavy";
+        style = "bg-amber-950/60 border border-amber-500/30 text-amber-300";
+      }
+
+      ratioBadgeEl.className = `text-[10px] px-2.5 py-0.5 rounded-full font-semibold font-outfit ${style}`;
+      ratioBadgeEl.innerText = text;
+      
+      ratioCalcBadgeEl.className = `text-xs px-2.5 py-1 rounded-full font-semibold font-outfit ${style}`;
+      ratioCalcBadgeEl.innerText = text;
+    }
+
+    // Satisfaction Display Emoji Map
+    function updateSatisfactionDisplay(val) {
+      document.getElementById('input-satisfaction-val').innerText = val;
+      const emojiEl = document.getElementById('satisfaction-emoji');
+      const score = parseFloat(val);
+      if (score >= 4.5) emojiEl.innerText = "😀";
+      else if (score >= 3.8) emojiEl.innerText = "🙂";
+      else if (score >= 3.0) emojiEl.innerText = "😐";
+      else if (score >= 2.0) emojiEl.innerText = "😞";
+      else emojiEl.innerText = "😡";
+    }
+
+    // Calculate financial figures
+    function calculateSalesMetrics() {
+      const revenue = parseFloat(document.getElementById('input-sales-revenue').value) || 0;
+      const covers = parseInt(document.getElementById('input-sales-covers').value) || 0;
+      
+      let pph = 0.00;
+      if (covers > 0) {
+        pph = revenue / covers;
+      }
+      
+      document.getElementById('sales-pph-display').innerText = `$${pph.toFixed(2)}`;
+      document.getElementById('calc-spend-head').innerText = `$${pph.toFixed(2)}`;
+      
+      calculateHighMarginProfits();
+    }
+
+    // Dynamic Lists render routines
+    function renderAllTables() {
+      renderLogisticsShorts();
+      renderLogisticsQuality();
+      renderServiceFlags();
+      renderCookTimelines();
+      renderSalesHighMargin();
+    }
+
+    // 1. Logistics: Shorted items table rendering
+    function renderLogisticsShorts() {
+      const tbody = document.getElementById('table-logistics-shorts');
+      if (shortedItemsList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No shorted items logged.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = '';
+      shortedItemsList.forEach((item, idx) => {
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-800 hover:bg-slate-800/20">
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.item_name}" onchange="updateListItem('shortedItemsList', ${idx}, 'item_name', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.supplier}" onchange="updateListItem('shortedItemsList', ${idx}, 'supplier', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.quantity_ordered}" onchange="updateListItem('shortedItemsList', ${idx}, 'quantity_ordered', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.quantity_received}" onchange="updateListItem('shortedItemsList', ${idx}, 'quantity_received', this.value)"></td>
+            <td class="p-3">
+              <select class="bg-slate-900 border border-slate-700 text-xs rounded px-2 py-0.5" onchange="updateListItem('shortedItemsList', ${idx}, 'impact_severity', this.value)">
+                <option value="High" ${item.impact_severity === 'High' ? 'selected' : ''}>High Impact</option>
+                <option value="Medium" ${item.impact_severity === 'Medium' ? 'selected' : ''}>Medium</option>
+                <option value="Low" ${item.impact_severity === 'Low' ? 'selected' : ''}>Low Impact</option>
+              </select>
+            </td>
+            <td class="p-3 text-center">
+              <button onclick="removeListItem('shortedItemsList', ${idx})" class="text-rose-500 hover:text-rose-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function addLogisticsShortRow() {
+      shortedItemsList.push({ item_name: '', supplier: '', quantity_ordered: '', quantity_received: '', impact_severity: 'Medium' });
+      renderLogisticsShorts();
+    }
+
+    // 1. Logistics: Quality discrepancies table rendering
+    function renderLogisticsQuality() {
+      const tbody = document.getElementById('table-logistics-quality');
+      if (qualityIssuesList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">No quality anomalies reported.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = '';
+      qualityIssuesList.forEach((item, idx) => {
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-800 hover:bg-slate-800/20">
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.item_name}" onchange="updateListItem('qualityIssuesList', ${idx}, 'item_name', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.issue}" onchange="updateListItem('qualityIssuesList', ${idx}, 'issue', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.supplier}" onchange="updateListItem('qualityIssuesList', ${idx}, 'supplier', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.action_taken}" onchange="updateListItem('qualityIssuesList', ${idx}, 'action_taken', this.value)"></td>
+            <td class="p-3 text-center">
+              <button onclick="removeListItem('qualityIssuesList', ${idx})" class="text-rose-500 hover:text-rose-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function addLogisticsQualityRow() {
+      qualityIssuesList.push({ item_name: '', issue: '', supplier: '', action_taken: '' });
+      renderLogisticsQuality();
+    }
+
+    // 2. Labor: Bottlenecks tags system
+    function addLaborBottleneck() {
+      const input = document.getElementById('input-bottleneck-text');
+      const val = input.value.trim();
+      if (val === '') return;
+      laborBottlenecksList.push(val);
+      input.value = '';
+      renderLaborBottlenecks();
+    }
+
+    function removeLaborBottleneck(idx) {
+      laborBottlenecksList.splice(idx, 1);
+      renderLaborBottlenecks();
+    }
+
+    function renderLaborBottlenecks() {
+      const container = document.getElementById('labor-bottlenecks-list');
+      if (laborBottlenecksList.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-600 italic select-none self-center mx-auto">No bottlenecks logged. Shift running smooth.</span>`;
+        return;
+      }
+      container.innerHTML = '';
+      laborBottlenecksList.forEach((b, idx) => {
+        container.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-3 py-1 bg-slate-800 text-slate-200 text-xs rounded-full border border-slate-700/80">
+            <span>${b}</span>
+            <button onclick="removeLaborBottleneck(${idx})" class="text-slate-400 hover:text-slate-100 font-bold ml-1">&times;</button>
+          </span>
+        `;
+      });
+    }
+
+    // 3. Service: Table flags rendering
+    function renderServiceFlags() {
+      const tbody = document.getElementById('table-service-flags');
+      if (serviceFlagsList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic">No hospitality failures logged. Excellent.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = '';
+      serviceFlagsList.forEach((flag, idx) => {
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-800 hover:bg-slate-800/20">
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none text-center font-outfit" value="${flag.table_number}" onchange="updateListItem('serviceFlagsList', ${idx}, 'table_number', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${flag.issue}" onchange="updateListItem('serviceFlagsList', ${idx}, 'issue', this.value)"></td>
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${flag.resolution}" onchange="updateListItem('serviceFlagsList', ${idx}, 'resolution', this.value)"></td>
+            <td class="p-3 text-center">
+              <button onclick="removeListItem('serviceFlagsList', ${idx})" class="text-rose-500 hover:text-rose-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function addServiceFlagRow() {
+      serviceFlagsList.push({ table_number: '', issue: '', resolution: '' });
+      renderServiceFlags();
+    }
+
+    // 4. Prep: Gaps tags builder
+    function addPrepGap() {
+      const input = document.getElementById('input-prep-gap');
+      const val = input.value.trim();
+      if (val === '') return;
+      
+      const gaps = val.split(',').map(x => x.trim()).filter(x => x !== '');
+      gaps.forEach(g => {
+        if (!qualityIssuesList.includes(g)) {
+          laborBottlenecksList.push(g); // wait, prep_list_gaps should go to its own state!
+        }
+      });
+      // Corrected logic:
+      const pGapsInput = document.getElementById('input-prep-gap');
+      const pGap = pGapsInput.value.trim();
+      if (pGap === '') return;
+      
+      // Let's create a specific array for prep gaps
+      if (!window.prepGapsList) window.prepGapsList = [];
+      window.prepGapsList.push(pGap);
+      pGapsInput.value = '';
+      renderPrepGaps();
+    }
+
+    function removePrepGap(idx) {
+      if (window.prepGapsList) {
+        window.prepGapsList.splice(idx, 1);
+      }
+      renderPrepGaps();
+    }
+
+    function renderPrepGaps() {
+      const container = document.getElementById('prep-gaps-list');
+      if (!window.prepGapsList || window.prepGapsList.length === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-600 italic select-none self-center mx-auto">No prep gaps reported.</span>`;
+        return;
+      }
+      container.innerHTML = '';
+      window.prepGapsList.forEach((gap, idx) => {
+        container.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-3 py-1 bg-indigo-950/60 text-indigo-300 text-xs rounded-full border border-indigo-500/20">
+            <span>${gap}</span>
+            <button onclick="removePrepGap(${idx})" class="text-indigo-400 hover:text-indigo-100 font-bold ml-1">&times;</button>
+          </span>
+        `;
+      });
+    }
+
+    // 4. Prep: Cooking lines table rendering
+    function renderCookTimelines() {
+      const tbody = document.getElementById('table-cook-timelines');
+      if (cookingTimelinesList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500 italic">No menu timelines logged.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = '';
+      cookingTimelinesList.forEach((item, idx) => {
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-800 hover:bg-slate-800/20">
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.menu_item}" onchange="updateListItem('cookingTimelinesList', ${idx}, 'menu_item', this.value)"></td>
+            <td class="p-3"><input type="number" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none font-outfit" value="${item.prep_time_mins}" onchange="updateListItem('cookingTimelinesList', ${idx}, 'prep_time_mins', parseInt(this.value) || 0)"></td>
+            <td class="p-3"><input type="number" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none font-outfit" value="${item.cook_time_mins}" onchange="updateListItem('cookingTimelinesList', ${idx}, 'cook_time_mins', parseInt(this.value) || 0)"></td>
+            <td class="p-3 text-center">
+              <button onclick="removeListItem('cookingTimelinesList', ${idx})" class="text-rose-500 hover:text-rose-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function addCookTimelineRow() {
+      cookingTimelinesList.push({ menu_item: '', prep_time_mins: 2, cook_time_mins: 10 });
+      renderCookTimelines();
+    }
+
+    // Line Ticket Sequencing algorithm: Sort items by cooking time (longest to shortest)
+    // so kitchen chefs know when to drop each item to have plates land hot at the same time.
+    function optimizeTimelineSequence() {
+      const el = document.getElementById('timeline-optimized-list');
+      if (cookingTimelinesList.length === 0) {
+        el.innerHTML = `<p class="italic text-slate-600 text-center py-2">Add menu items in the table above first.</p>`;
+        return;
+      }
+      
+      // Filter out invalid items
+      const validItems = cookingTimelinesList.filter(item => item.menu_item.trim() !== '');
+      if (validItems.length === 0) {
+        el.innerHTML = `<p class="italic text-slate-600 text-center py-2">Enter at least one item name to calculate sequence.</p>`;
+        return;
+      }
+      
+      // Calculate total preparation sequences
+      // Sort in descending order of Cook Time
+      const sorted = [...validItems].sort((a, b) => b.cook_time_mins - a.cook_time_mins);
+      const maxCookTime = sorted[0].cook_time_mins;
+      
+      el.innerHTML = '<div class="space-y-2 border-l border-brand-500/40 pl-4 py-1">';
+      sorted.forEach((item, idx) => {
+        // Calculate coordinate delay
+        const dropDelay = maxCookTime - item.cook_time_mins;
+        let delayText = dropDelay === 0 ? "Drop immediately (T-0m)" : `Wait ${dropDelay}m before drop (T+${dropDelay}m)`;
+        
+        el.innerHTML += `
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="font-semibold text-slate-200 block text-xs">${idx+1}. ${item.menu_item}</span>
+              <span class="text-[10px] text-slate-400">${delayText} &bull; Cook: ${item.cook_time_mins}m &bull; Prep: ${item.prep_time_mins}m</span>
+            </div>
+            <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-outfit font-medium">Stage ${idx+1}</span>
+          </div>
+        `;
+      });
+      el.innerHTML += '</div>';
+    }
+
+    // 5. Sales: High Margin Sales table rendering
+    function renderSalesHighMargin() {
+      const tbody = document.getElementById('table-sales-margin');
+      if (highMarginItemsList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">No margin items tracked.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = '';
+      highMarginItemsList.forEach((item, idx) => {
+        const estProfit = (item.quantity * item.unit_margin) || 0;
+        tbody.innerHTML += `
+          <tr class="border-b border-slate-800 hover:bg-slate-800/20">
+            <td class="p-3"><input type="text" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none" value="${item.item_name}" onchange="updateListItem('highMarginItemsList', ${idx}, 'item_name', this.value)"></td>
+            <td class="p-3"><input type="number" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none font-outfit" value="${item.quantity}" onchange="updateListItem('highMarginItemsList', ${idx}, 'quantity', parseInt(this.value) || 0); calculateSalesMetrics()"></td>
+            <td class="p-3"><input type="number" class="bg-transparent border-b border-slate-700/60 focus:border-brand-500 w-full focus:outline-none font-outfit" value="${item.unit_margin}" step="0.10" onchange="updateListItem('highMarginItemsList', ${idx}, 'unit_margin', parseFloat(this.value) || 0); calculateSalesMetrics()"></td>
+            <td class="p-3 text-right font-semibold font-outfit text-white">$${estProfit.toFixed(2)}</td>
+            <td class="p-3 text-center">
+              <button onclick="removeListItem('highMarginItemsList', ${idx}); calculateSalesMetrics()" class="text-rose-500 hover:text-rose-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mx-auto"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function addHighMarginRow() {
+      highMarginItemsList.push({ item_name: '', quantity: 10, unit_margin: 5.00 });
+      renderSalesHighMargin();
+    }
+
+    function calculateHighMarginProfits() {
+      let totalProfit = 0;
+      highMarginItemsList.forEach(item => {
+        totalProfit += (item.quantity * item.unit_margin) || 0;
+      });
+      document.getElementById('calc-margin-profit').innerText = `$${totalProfit.toFixed(2)}`;
+    }
+
+    // State list modification helpers
+    function updateListItem(arrayName, index, property, value) {
+      window[arrayName][index][property] = value;
+    }
+
+    function removeListItem(arrayName, index) {
+      window[arrayName].splice(index, 1);
+      renderAllTables();
+    }
+
+    // Form data gather & submit logic
+    async function submitShift() {
+      // Transition to loading view
+      switchTab('overview');
+      document.getElementById('ai-placeholder').classList.add('hidden');
+      document.getElementById('ai-report').classList.add('hidden');
+      document.getElementById('ai-loading').classList.remove('hidden');
+
+      // Compile payload matching FastAPI schemas
+      const revenue = parseFloat(document.getElementById('input-sales-revenue').value) || 0;
+      const covers = parseInt(document.getElementById('input-sales-covers').value) || 0;
+      const avgSpend = covers > 0 ? (revenue / covers) : 0;
+      
+      const payload = {
+        date: document.getElementById('input-shift-date').value,
+        shift_type: document.getElementById('input-shift-type').value,
+        logistics: {
+          deliveries_received: parseInt(document.getElementById('input-deliveries-received').value) || 0,
+          shorted_items: shortedItemsList.filter(x => x.item_name !== ''),
+          quality_issues: qualityIssuesList.filter(x => x.item_name !== '')
+        },
+        labor: {
+          floor_staff_count: parseInt(document.getElementById('input-floor-staff').value) || 0,
+          kitchen_staff_count: parseInt(document.getElementById('input-kitchen-staff').value) || 0,
+          ratio_warning_triggered: isLaborRatioOutofBounds(),
+          bottlenecks: laborBottlenecksList
+        },
+        customer_service: {
+          average_table_turn_mins: parseInt(document.getElementById('input-turn-number').value) || 75,
+          guest_satisfaction_score: parseFloat(document.getElementById('input-satisfaction-range').value) || 4.5,
+          service_flags: serviceFlagsList.filter(x => x.table_number !== '')
+        },
+        kitchen_prep: {
+          prep_completion_percentage: parseInt(document.getElementById('input-prep-number').value) || 100,
+          prep_list_gaps: window.prepGapsList || [],
+          cooking_timelines: cookingTimelinesList.filter(x => x.menu_item !== '')
+        },
+        sales: {
+          revenue: revenue,
+          covers: covers,
+          avg_spend_per_head: avgSpend,
+          high_margin_items_sold: highMarginItemsList.filter(x => x.item_name !== '')
+        }
+      };
+
+      try {
+        const response = await fetch(`${API_HOST}/api/analyze-shift`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server returned error status: ${response.status}`);
+        }
+
+        const report = await response.json();
+        renderAIReport(report);
+      } catch (err) {
+        alert(`Analysis request failed: ${err.message}`);
+        document.getElementById('ai-loading').classList.add('hidden');
+        document.getElementById('ai-placeholder').classList.remove('hidden');
+      }
+    }
+
+    function isLaborRatioOutofBounds() {
+      const floorVal = parseInt(document.getElementById('input-floor-staff').value) || 0;
+      const kitchenVal = parseInt(document.getElementById('input-kitchen-staff').value) || 0;
+      if (kitchenVal === 0) return true;
+      const ratio = floorVal / kitchenVal;
+      return (ratio < 1.0 || ratio > 1.8);
+    }
+
+    // Render AI result values to View
+    function renderAIReport(report) {
+      // Hide loading, show report
+      document.getElementById('ai-loading').classList.add('hidden');
+      document.getElementById('ai-report').classList.remove('hidden');
+
+      // Demo mode badge visibility
+      const demoBadge = document.getElementById('demo-badge');
+      if (report.demo_mode) {
+        demoBadge.classList.remove('hidden');
+      } else {
+        demoBadge.classList.add('hidden');
+      }
+
+      // 1. Draw Operational Score gauge
+      const score = report.operational_score;
+      document.getElementById('score-val').innerText = score;
+      
+      const circle = document.getElementById('score-gauge');
+      const radius = circle.r.baseVal.value;
+      const circumference = 2 * Math.PI * radius;
+      
+      // Calculate offset based on score (0 to 100)
+      const offset = circumference - (score / 100) * circumference;
+      circle.style.strokeDasharray = `${circumference} ${circumference}`;
+      circle.style.strokeDashoffset = offset;
+      
+      // Set color grade
+      if (score >= 80) circle.setAttribute('stroke', '#10b981'); // Emerald
+      else if (score >= 60) circle.setAttribute('stroke', '#f59e0b'); // Amber
+      else circle.setAttribute('stroke', '#ef4444'); // Red
+
+      // 2. Set base summary paragraph
+      document.getElementById('report-summary').innerText = `"${report.summary}"`;
+
+      // 3. Set KPI text strings
+      document.getElementById('kpi-logistics').innerText = report.kpis.logistics_health;
+      document.getElementById('kpi-labor').innerText = report.kpis.labor_efficiency;
+      document.getElementById('kpi-service').innerText = report.kpis.guest_experience;
+      document.getElementById('kpi-kitchen').innerText = report.kpis.kitchen_efficiency;
+      document.getElementById('kpi-sales').innerText = report.kpis.financial_health;
+
+      // 4. Render Red flags list
+      const flagsContainer = document.getElementById('report-red-flags');
+      flagsContainer.innerHTML = '';
+      if (!report.critical_red_flags || report.critical_red_flags.length === 0) {
+        flagsContainer.innerHTML = `
+          <li class="flex items-center space-x-2 text-xs text-slate-400 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-brand-500 shrink-0"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" /></svg>
+            <span>No operational red flags registered.</span>
+          </li>`;
+      } else {
+        report.critical_red_flags.forEach(flag => {
+          flagsContainer.innerHTML += `
+            <li class="flex items-start space-x-2 text-xs text-slate-300 bg-rose-950/20 border border-rose-500/20 p-2.5 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-rose-500 shrink-0 mt-0.5"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" /></svg>
+              <span>${flag}</span>
+            </li>`;
+        });
+      }
+
+      // 5. Render Actionable Recommendations
+      const actionsContainer = document.getElementById('report-recommendations');
+      actionsContainer.innerHTML = '';
+      if (!report.actionable_recommendations || report.actionable_recommendations.length === 0) {
+        actionsContainer.innerHTML = `<li class="text-xs text-slate-500 italic">No recommendations needed. Maintain current parameters.</li>`;
+      } else {
+        report.actionable_recommendations.forEach(action => {
+          actionsContainer.innerHTML += `
+            <li class="flex items-start space-x-2 text-xs text-slate-300 bg-slate-950/40 border border-slate-800 p-2.5 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-accent-500 shrink-0 mt-0.5"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.25a.75.75 0 0 0-1.5 0v2.5h-2.5a.75.75 0 0 0 0 1.5h2.5v2.5a.75.75 0 0 0 1.5 0v-2.5h2.5a.75.75 0 0 0 0-1.5h-2.5v-2.5Z" clip-rule="evenodd" /></svg>
+              <span>${action}</span>
+            </li>`;
+        });
+      }
+    }
+
+    // Simulation presets injector
+    function loadDemoShift(presetType) {
+      if (presetType === 'high_perf') {
+        // High Performance Shift logs
+        document.getElementById('input-deliveries-received').value = 4;
+        shortedItemsList = [];
+        qualityIssuesList = [];
+        
+        document.getElementById('input-floor-staff').value = 9;
+        document.getElementById('input-kitchen-staff').value = 6;
+        laborBottlenecksList = [];
+        
+        document.getElementById('input-turn-range').value = 62;
+        document.getElementById('input-turn-number').value = 62;
+        document.getElementById('input-satisfaction-range').value = 4.8;
+        updateSatisfactionDisplay(4.8);
+        serviceFlagsList = [];
+
+        document.getElementById('input-prep-range').value = 98;
+        document.getElementById('input-prep-number').value = 98;
+        window.prepGapsList = [];
+        
+        cookingTimelinesList = [
+          { menu_item: "Sous Vide Pork Chop", prep_time_mins: 3, cook_time_mins: 15 },
+          { menu_item: "Pan Seared Sea Bass", prep_time_mins: 4, cook_time_mins: 12 },
+          { menu_item: "Lemon Herb Roast Chicken", prep_time_mins: 2, cook_time_mins: 22 }
+        ];
+
+        document.getElementById('input-sales-revenue').value = 6920.00;
+        document.getElementById('input-sales-covers').value = 165;
+        
+        highMarginItemsList = [
+          { item_name: "Reserve Cabernet Sauvignon", quantity: 18, unit_margin: 22.00 },
+          { item_name: "Signature Espresso Martini", quantity: 38, unit_margin: 12.50 },
+          { item_name: "Warm Chocolate Fondant", quantity: 24, unit_margin: 8.20 }
+        ];
+      } else {
+        // Bottleneck-heavy shift logs
+        document.getElementById('input-deliveries-received').value = 2;
+        shortedItemsList = [
+          { item_name: "Fresh Brioche Buns", supplier: "Bakehouse Co.", quantity_ordered: "80 units", quantity_received: "30 units", impact_severity: "High" }
+        ];
+        qualityIssuesList = [
+          { item_name: "Strip Steaks", issue: "Delivered temperature at 52°F (above safe limit)", supplier: "MeatCorp Distributors", action_taken: "Refused entire case, requested urgent replacement" }
+        ];
+        
+        document.getElementById('input-floor-staff').value = 4;
+        document.getElementById('input-kitchen-staff').value = 7;
+        laborBottlenecksList = [
+          "Floor staff severely short-handed; wait times at host stand exceeded 20 mins",
+          "One glasswasher broke down mid-shift, delaying beverage runs"
+        ];
+        
+        document.getElementById('input-turn-range').value = 98;
+        document.getElementById('input-turn-number').value = 98;
+        document.getElementById('input-satisfaction-range').value = 3.2;
+        updateSatisfactionDisplay(3.2);
+        
+        serviceFlagsList = [
+          { table_number: "22", issue: "Steaks took 45 minutes to arrive; table complained twice", resolution: "Comped the steaks entirely ($75 value) and offered free coffees" },
+          { table_number: "8", issue: "Food runner dropped glass of red wine near guest jacket", resolution: "Offered dry cleaning billing card, comped drinks" }
+        ];
+
+        document.getElementById('input-prep-range').value = 75;
+        document.getElementById('input-prep-number').value = 75;
+        window.prepGapsList = [
+          "Béarnaise sauce prep unfinished",
+          "Dessert pastry cases unbaked"
+        ];
+
+        cookingTimelinesList = [
+          { menu_item: "Dry Aged Steak", prep_time_mins: 2, cook_time_mins: 18 },
+          { menu_item: "Lobster Thermidor", prep_time_mins: 5, cook_time_mins: 25 },
+          { menu_item: "Truffle Tagliatelle", prep_time_mins: 3, cook_time_mins: 8 }
+        ];
+
+        document.getElementById('input-sales-revenue').value = 4120.00;
+        document.getElementById('input-sales-covers').value = 120;
+        
+        highMarginItemsList = [
+          { item_name: "House Prosecco Glass", quantity: 12, unit_margin: 6.50 },
+          { item_name: "Truffle Parmesan Fries", quantity: 10, unit_margin: 5.80 }
+        ];
+      }
+
+      // Re-trigger visual sync
+      renderAllTables();
+      renderPrepGaps();
+      calculateSalesMetrics();
+      calculateLaborRatio();
+      optimizeTimelineSequence();
+      
+      // Flash notice
+      const banner = document.createElement('div');
+      banner.className = 'fixed bottom-5 right-5 bg-brand-500 text-white font-semibold font-outfit text-xs px-4 py-3 rounded-lg shadow-2xl z-50 transition-all duration-300 opacity-0 transform translate-y-2';
+      banner.innerText = `Preset Loaded: ${presetType === 'high_perf' ? 'Ideal Shift Logs' : 'Bottleneck-Heavy Shift Logs'}`;
+      document.body.appendChild(banner);
+      setTimeout(() => { banner.classList.remove('opacity-0', 'translate-y-2'); }, 50);
+      setTimeout(() => {
+        banner.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => { banner.remove(); }, 300);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

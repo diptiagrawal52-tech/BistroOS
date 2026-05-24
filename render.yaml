@@ -1,0 +1,16 @@
+# render.yaml — Render Infrastructure as Code (IaC) configuration
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: bistro-os
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    branch: main
+    region: oregon
+    plan: free
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false   # Set this manually in the Render dashboard (never hardcode secrets)
+    healthCheckPath: /api/health
+    autoDeploy: true
