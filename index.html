@@ -1135,12 +1135,30 @@
     }
 
     // State list modification helpers
+    function getArrayByName(name) {
+      switch (name) {
+        case 'shortedItemsList': return shortedItemsList;
+        case 'qualityIssuesList': return qualityIssuesList;
+        case 'laborBottlenecksList': return laborBottlenecksList;
+        case 'serviceFlagsList': return serviceFlagsList;
+        case 'cookingTimelinesList': return cookingTimelinesList;
+        case 'highMarginItemsList': return highMarginItemsList;
+        default: return [];
+      }
+    }
+
     function updateListItem(arrayName, index, property, value) {
-      window[arrayName][index][property] = value;
+      const arr = getArrayByName(arrayName);
+      if (arr && arr[index]) {
+        arr[index][property] = value;
+      }
     }
 
     function removeListItem(arrayName, index) {
-      window[arrayName].splice(index, 1);
+      const arr = getArrayByName(arrayName);
+      if (arr) {
+        arr.splice(index, 1);
+      }
       renderAllTables();
     }
 
